@@ -1,23 +1,33 @@
 from app import db
 from .base import BaseModel
+from sqlalchemy.dialects.postgresql import ENUM
+from app.utils.validators import calculate_bill_total
+
+payment_status_enum = ENUM('paid', 'pending', name='payment_status_enum', create_type=False)
+payment_method_enum = ENUM('cash', 'card', 'upi', 'bank_transfer', name='payment_method_enum', create_type=False)
 
 class Bill(BaseModel):
     __tablename__ = 'bills'
 
     id = db.Column(db.Integer, primary_key=True)
-    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
-    appointment_id = db.Column(db.Integer, db.ForeignKey('appointments.id'))
-    bill_date = db.Column(db.DateTime, nullable=False)
-    consultation_fee = db.Column(db.Float, nullable=False)
-    medicine_charges = db.Column(db.Float, default=0.0)
-    total = db.Column(db.Float, nullable=False)
-    payment_status = db.Column(db.String(20), nullable=False)  # paid, pending
-    payment_method = db.Column(db.String(50))  # cash, card, upi
+    patient_id = db.Column(db.Integer, db.ForeignKey('patients.id', ondelete='CASCADE'), nullable=False)
+    appointment_id = db.Column(db.Integer, db.ForeignKey('appointments.id', ondelete='SET NULL'))
+    bill_date = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.now())
+    consultation_fee = db.Column(db.Numeric(10, 2), nullable=False)
+    medicine_charges = db.Column(db.Numeric(10, 2), default=0.0)
+    total = db.Column(db.Numeric(10, 2), nullable=False)
+    payment_status = db.Column(payment_status_enum, nullable=False, default='pending')
+    payment_method = db.Column(payment_method_enum)
+    payment_date = db.Column(db.DateTime(timezone=True))
+    transaction_id = db.Column(db.String(100))
     notes = db.Column(db.Text)
     
     # Relationships
     patient = db.relationship('Patient', backref='bills')
     appointment = db.relationship('Appointment', backref='bill')
+
+    def calculate_total(self):
+        self.total = calculate_bill_total(self.consultation_fee, self.medicine_charges)
 
 class BillItem(BaseModel):
     __tablename__ = 'bill_items'
