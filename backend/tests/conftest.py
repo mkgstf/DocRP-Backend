@@ -154,7 +154,7 @@ def prescription(app, doctor, patient, medicine):
             uuid=prescription_uuid,
             doctor_id=fresh_doctor.id,
             patient_id=fresh_patient.id,
-            date=date.today(),
+            issue_date=date.today(),
             notes="Test prescription"
         )
         db.session.add(prescription)

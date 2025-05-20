@@ -20,6 +20,7 @@ requests
 Werkzeug
 python-dateutil
 pytz
+Faker  # For generating realistic dummy data
 
 # Testing
 pytest
