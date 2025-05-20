@@ -1,0 +1,31 @@
+# requirements.txt
+
+# Flask and Extensions
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-JWT-Extended
+Flask-CORS
+Flask-RESTful
+
+# Database
+SQLAlchemy
+psycopg2-binary  # For PostgreSQL
+pymysql  # For MySQL
+python-dotenv
+
+# Utilities
+marshmallow
+requests
+Werkzeug
+python-dateutil
+pytz
+
+# Testing
+pytest
+pytest-flask
+
+# Development
+black
+flake8
+isort
