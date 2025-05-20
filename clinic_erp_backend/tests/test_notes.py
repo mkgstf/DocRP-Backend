@@ -1,24 +1,36 @@
 import json
 import pytest
+import uuid
 
 @pytest.fixture(scope='function')
 def note(app, doctor, patient):
     """Create a test note."""
+    note_uuid = str(uuid.uuid4())
     with app.app_context():
         from app.models.models import Note
-        import uuid
+        from app.extensions import db
         
         note = Note(
-            uuid=str(uuid.uuid4()),
+            uuid=note_uuid,
             doctor_id=doctor.id,
             patient_id=patient.id,
             title='Test Note',
             content='This is a test note content.',
             category='clinical'
         )
-        app.db.session.add(note)
-        app.db.session.commit()
-        return note
+        db.session.add(note)
+        db.session.commit()
+        
+        # Store the UUID to use in tests
+        note_uuid = note.uuid
+        
+    # Return the values we need to use in the tests
+    return type('NoteInfo', (), {
+        'uuid': note_uuid,
+        'title': 'Test Note',
+        'content': 'This is a test note content.',
+        'category': 'clinical'
+    })
 
 def test_get_notes(client, auth_headers, note):
     """Test getting list of notes"""

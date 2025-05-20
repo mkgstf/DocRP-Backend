@@ -163,9 +163,9 @@ class Prescription(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    items = db.relationship('PrescriptionItem', backref='prescription', lazy=True)
-    diagnoses = db.relationship('PatientDiagnosis', backref='prescription', lazy=True)
+    # Relationships with cascade delete
+    items = db.relationship('PrescriptionItem', backref='prescription', lazy=True, cascade="all, delete-orphan")
+    diagnoses = db.relationship('PatientDiagnosis', backref='prescription', lazy=True, cascade="all, delete-orphan")
     
     def __repr__(self):
         return f'<Prescription {self.id}>'

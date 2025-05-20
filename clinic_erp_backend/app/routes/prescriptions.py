@@ -472,3 +472,69 @@ def export_prescription(prescription_uuid):
         "msg": "PDF export capability would be implemented here",
         "prescription_id": prescription.uuid
     }), 200
+
+@prescriptions_bp.route('/patients/<string:patient_uuid>/prescriptions', methods=['GET'])
+@jwt_required()
+def patient_prescriptions(patient_uuid):
+    """
+    Get all prescriptions for a specific patient
+    """
+    current_user_uuid = get_jwt_identity()
+    doctor = Doctor.query.filter_by(uuid=current_user_uuid).first()
+    
+    if not doctor:
+        return jsonify({"msg": "Doctor not found"}), 404
+    
+    # Check if patient exists and belongs to the doctor
+    patient = Patient.query.filter_by(uuid=patient_uuid, doctor_id=doctor.id).first()
+    if not patient:
+        return jsonify({"msg": "Patient not found"}), 404
+    
+    # Get query parameters for pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # Build query for patient's prescriptions
+    query = Prescription.query.filter_by(patient_id=patient.id, doctor_id=doctor.id)
+    
+    # Order by issue date (newest first)
+    query = query.order_by(Prescription.issue_date.desc())
+    
+    # Get paginated results
+    pagination = get_paginated_results(query, page, per_page)
+    
+    # Format results
+    prescriptions = []
+    for prescription in pagination.items:
+        prescription_data = {
+            "id": prescription.uuid,
+            "issue_date": prescription.issue_date.strftime('%Y-%m-%d'),
+            "expiry_date": prescription.expiry_date.strftime('%Y-%m-%d') if prescription.expiry_date else None,
+            "notes": prescription.notes,
+            "medicines_count": len(prescription.items),
+            "created_at": prescription.created_at.isoformat(),
+            "updated_at": prescription.updated_at.isoformat()
+        }
+        
+        # Add items summary
+        medicine_names = []
+        for item in prescription.items:
+            medicine = Medicine.query.get(item.medicine_id)
+            if medicine:
+                medicine_names.append(medicine.name)
+        
+        prescription_data["medicines"] = medicine_names
+        
+        prescriptions.append(prescription_data)
+    
+    return jsonify({
+        "prescriptions": prescriptions,
+        "pagination": {
+            "total": pagination.total,
+            "pages": pagination.pages,
+            "page": pagination.page,
+            "per_page": pagination.per_page,
+            "has_next": pagination.has_next,
+            "has_prev": pagination.has_prev
+        }
+    }), 200

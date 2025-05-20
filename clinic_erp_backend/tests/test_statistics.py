@@ -70,7 +70,7 @@ def test_get_prescription_statistics(client, auth_headers, prescription):
     
     assert response.status_code == 200
     assert 'prescriptions' in data
-    assert 'recent' in data
+    assert 'recent' in data['prescriptions']
     assert 'top_medicines' in data
     
     # Verify our prescription is included in the stats
