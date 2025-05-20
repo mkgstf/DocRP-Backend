@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 from datetime import timedelta
 
-from app.extensions import db, migrate, jwt  # Changed from relative import to absolute import
+from app.extensions import db, migrate, jwt
 
 def create_app(test_config=None):
     app = Flask(__name__)
@@ -26,6 +26,7 @@ def create_app(test_config=None):
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
     
     # Import and register blueprints
+    # Import here to avoid circular imports
     from .routes.patients import patients_bp
     from .routes.appointments import appointments_bp
     from .routes.medicines import medicines_bp

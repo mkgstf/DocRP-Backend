@@ -7,7 +7,7 @@ from flask_jwt_extended import (
 )
 from app.models.models import Doctor
 from app import db
-from app.db import add_to_db, commit_changes
+from app.db_utils import add_to_db, commit_changes
 from werkzeug.security import check_password_hash
 import datetime
 import uuid

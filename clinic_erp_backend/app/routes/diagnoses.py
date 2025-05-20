@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models.models import Diagnosis, Doctor, PatientDiagnosis, Patient
+from app.models.models import Diagnosis, Doctor, Patient, PatientDiagnosis
 from app import db
-from app.db import add_to_db, commit_changes, delete_from_db, get_paginated_results
+from app.db_utils import add_to_db, commit_changes, delete_from_db, get_paginated_results
 from sqlalchemy import or_
+from datetime import datetime
 import uuid
 
 diagnoses_bp = Blueprint('diagnoses', __name__)
