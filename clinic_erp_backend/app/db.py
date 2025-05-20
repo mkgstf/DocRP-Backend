@@ -1,4 +1,4 @@
-from app import db
+from app.extensions import db
 from sqlalchemy.exc import SQLAlchemyError
 from flask import current_app
 import logging

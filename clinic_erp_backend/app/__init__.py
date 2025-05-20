@@ -1,15 +1,9 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 import os
 from datetime import timedelta
 
-# Initialize extensions
-db = SQLAlchemy()
-migrate = Migrate()
-jwt = JWTManager()
+from app.extensions import db, migrate, jwt  # Changed from relative import to absolute import
 
 def create_app(test_config=None):
     app = Flask(__name__)

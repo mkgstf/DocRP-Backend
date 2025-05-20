@@ -17,10 +17,10 @@ def get_notes():
     """
     current_user_uuid = get_jwt_identity()
     doctor = Doctor.query.filter_by(uuid=current_user_uuid).first()
-    
+
     if not doctor:
         return jsonify({"msg": "Doctor not found"}), 404
-    
+
     # Get query parameters
     patient_uuid = request.args.get('patient_id')
     category = request.args.get('category')
@@ -28,10 +28,10 @@ def get_notes():
     search = request.args.get('search', '')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    
+
     # Build query
     query = Note.query.filter_by(doctor_id=doctor.id)
-    
+
     # Apply filters if provided
     if patient_uuid:
         patient = Patient.query.filter_by(uuid=patient_uuid, doctor_id=doctor.id).first()
@@ -39,13 +39,13 @@ def get_notes():
             query = query.filter_by(patient_id=patient.id)
         else:
             return jsonify({"msg": "Patient not found"}), 404
-    
+
     if category:
         query = query.filter_by(category=category)
-    
+
     if tag_id:
         query = query.join(NoteTag).filter(NoteTag.tag_id == tag_id)
-    
+
     if search:
         search_term = f"%{search}%"
         query = query.filter(
@@ -54,18 +54,18 @@ def get_notes():
                 Note.content.ilike(search_term)
             )
         )
-    
+
     # Order by creation date (newest first)
     query = query.order_by(Note.created_at.desc())
-    
+
     # Get paginated results
     pagination = get_paginated_results(query, page, per_page)
-    
+
     # Format results
     notes = []
     for note in pagination.items:
         patient = Patient.query.get(note.patient_id)
-        
+
         note_data = {
             "id": note.uuid,
             "title": note.title,
@@ -79,7 +79,7 @@ def get_notes():
             },
             "tags": []
         }
-        
+
         # Add tags
         for note_tag in note.tags:
             tag = Tag.query.get(note_tag.tag_id)
@@ -88,9 +88,9 @@ def get_notes():
                 "name": tag.name,
                 "color": tag.color
             })
-        
+
         notes.append(note_data)
-    
+
     return jsonify({
         "notes": notes,
         "pagination": {
@@ -111,17 +111,17 @@ def get_note(note_uuid):
     """
     current_user_uuid = get_jwt_identity()
     doctor = Doctor.query.filter_by(uuid=current_user_uuid).first()
-    
+
     if not doctor:
         return jsonify({"msg": "Doctor not found"}), 404
-    
+
     note = Note.query.filter_by(uuid=note_uuid, doctor_id=doctor.id).first()
-    
+
     if not note:
         return jsonify({"msg": "Note not found"}), 404
-    
+
     patient = Patient.query.get(note.patient_id)
-    
+
     # Format note data
     note_data = {
         "id": note.uuid,
@@ -136,7 +136,7 @@ def get_note(note_uuid):
         },
         "tags": []
     }
-    
+
     # Add appointment if exists
     if note.appointment_id:
         appointment = Appointment.query.get(note.appointment_id)
@@ -144,7 +144,7 @@ def get_note(note_uuid):
             "id": appointment.uuid,
             "date": appointment.date.strftime('%Y-%m-%d')
         }
-    
+
     # Add tags
     for note_tag in note.tags:
         tag = Tag.query.get(note_tag.tag_id)
@@ -153,7 +153,7 @@ def get_note(note_uuid):
             "name": tag.name,
             "color": tag.color
         })
-    
+
     return jsonify(note_data), 200
 
 @notes_bp.route('/notes', methods=['POST'])
@@ -164,41 +164,41 @@ def create_note():
     """
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
-    
+
     current_user_uuid = get_jwt_identity()
     doctor = Doctor.query.filter_by(uuid=current_user_uuid).first()
-    
+
     if not doctor:
         return jsonify({"msg": "Doctor not found"}), 404
-    
+
     data = request.get_json()
-    
+
     # Check required fields
     if 'patient_id' not in data:
         return jsonify({"msg": "Missing patient_id"}), 400
-    
+
     if 'content' not in data:
         return jsonify({"msg": "Missing content"}), 400
-    
+
     # Check if patient exists
     patient = Patient.query.filter_by(uuid=data['patient_id'], doctor_id=doctor.id).first()
     if not patient:
         return jsonify({"msg": "Patient not found"}), 404
-    
+
     # Check appointment if provided
     appointment_id = None
     if 'appointment_id' in data and data['appointment_id']:
         appointment = Appointment.query.filter_by(
-            uuid=data['appointment_id'], 
+            uuid=data['appointment_id'],
             doctor_id=doctor.id,
             patient_id=patient.id
         ).first()
-        
+
         if not appointment:
             return jsonify({"msg": "Appointment not found or does not belong to this patient"}), 404
-        
+
         appointment_id = appointment.id
-    
+
     # Create new note
     new_note = Note(
         uuid=str(uuid.uuid4()),
@@ -209,21 +209,21 @@ def create_note():
         content=data['content'],
         category=data.get('category')
     )
-    
+
     # Add to database
     if not add_to_db(new_note):
         return jsonify({"msg": "Error creating note"}), 500
-    
+
     # Add tags if provided
     if 'tags' in data and isinstance(data['tags'], list):
         for tag_data in data['tags']:
             # Find or create tag
             tag = None
-            
+
             if isinstance(tag_data, dict) and 'name' in tag_data:
                 tag_name = tag_data['name']
                 tag = Tag.query.filter(Tag.name.ilike(tag_name)).first()
-                
+
                 if not tag:
                     # Create new tag
                     tag = Tag(
@@ -235,7 +235,7 @@ def create_note():
             elif isinstance(tag_data, int):
                 # Tag ID provided
                 tag = Tag.query.get(tag_data)
-            
+
             if tag:
                 # Create note tag association
                 note_tag = NoteTag(
@@ -243,7 +243,7 @@ def create_note():
                     tag_id=tag.id
                 )
                 db.session.add(note_tag)
-    
+
     # Commit all changes
     if commit_changes():
         return jsonify({
@@ -253,7 +253,7 @@ def create_note():
                 "title": new_note.title
             }
         }), 201
-    
+
     return jsonify({"msg": "Error creating note"}), 500
 
 @notes_bp.route('/notes/<string:note_uuid>', methods=['PUT'])
@@ -264,44 +264,44 @@ def update_note(note_uuid):
     """
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
-    
+
     current_user_uuid = get_jwt_identity()
     doctor = Doctor.query.filter_by(uuid=current_user_uuid).first()
-    
+
     if not doctor:
         return jsonify({"msg": "Doctor not found"}), 404
-    
+
     note = Note.query.filter_by(uuid=note_uuid, doctor_id=doctor.id).first()
-    
+
     if not note:
         return jsonify({"msg": "Note not found"}), 404
-    
+
     data = request.get_json()
-    
+
     # Update fields
     if 'title' in data:
         note.title = data['title']
-    
+
     if 'content' in data:
         note.content = data['content']
-    
+
     if 'category' in data:
         note.category = data['category']
-    
+
     # Update tags if provided
     if 'tags' in data and isinstance(data['tags'], list):
         # Remove existing tags
         NoteTag.query.filter_by(note_id=note.id).delete()
-        
+
         # Add new tags
         for tag_data in data['tags']:
             # Find or create tag
             tag = None
-            
+
             if isinstance(tag_data, dict) and 'name' in tag_data:
                 tag_name = tag_data['name']
                 tag = Tag.query.filter(Tag.name.ilike(tag_name)).first()
-                
+
                 if not tag:
                     # Create new tag
                     tag = Tag(
@@ -313,7 +313,7 @@ def update_note(note_uuid):
             elif isinstance(tag_data, int):
                 # Tag ID provided
                 tag = Tag.query.get(tag_data)
-            
+
             if tag:
                 # Create note tag association
                 note_tag = NoteTag(
@@ -321,7 +321,7 @@ def update_note(note_uuid):
                     tag_id=tag.id
                 )
                 db.session.add(note_tag)
-    
+
     # Commit changes
     if commit_changes():
         return jsonify({
@@ -331,7 +331,7 @@ def update_note(note_uuid):
                 "title": note.title
             }
         }), 200
-    
+
     return jsonify({"msg": "Error updating note"}), 500
 
 @notes_bp.route('/notes/<string:note_uuid>', methods=['DELETE'])
@@ -342,19 +342,19 @@ def delete_note(note_uuid):
     """
     current_user_uuid = get_jwt_identity()
     doctor = Doctor.query.filter_by(uuid=current_user_uuid).first()
-    
+
     if not doctor:
         return jsonify({"msg": "Doctor not found"}), 404
-    
+
     note = Note.query.filter_by(uuid=note_uuid, doctor_id=doctor.id).first()
-    
+
     if not note:
         return jsonify({"msg": "Note not found"}), 404
-    
+
     # Delete note (cascade will delete note_tags)
     if delete_from_db(note):
         return jsonify({"msg": "Note deleted successfully"}), 200
-    
+
     return jsonify({"msg": "Error deleting note"}), 500
 
 @notes_bp.route('/tags', methods=['GET'])
@@ -365,13 +365,13 @@ def get_tags():
     """
     current_user_uuid = get_jwt_identity()
     doctor = Doctor.query.filter_by(uuid=current_user_uuid).first()
-    
+
     if not doctor:
         return jsonify({"msg": "Doctor not found"}), 404
-    
+
     # Get all tags
     tags = Tag.query.order_by(Tag.name).all()
-    
+
     # Format results
     tag_list = []
     for tag in tags:
@@ -380,7 +380,7 @@ def get_tags():
             "name": tag.name,
             "color": tag.color
         })
-    
+
     return jsonify({"tags": tag_list}), 200
 
 @notes_bp.route('/tags', methods=['POST'])
@@ -391,30 +391,30 @@ def create_tag():
     """
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
-    
+
     current_user_uuid = get_jwt_identity()
     doctor = Doctor.query.filter_by(uuid=current_user_uuid).first()
-    
+
     if not doctor:
         return jsonify({"msg": "Doctor not found"}), 404
-    
+
     data = request.get_json()
-    
+
     # Check required fields
     if 'name' not in data:
         return jsonify({"msg": "Missing name"}), 400
-    
+
     # Check if tag already exists
     existing_tag = Tag.query.filter(Tag.name.ilike(data['name'])).first()
     if existing_tag:
         return jsonify({"msg": "Tag with this name already exists"}), 409
-    
+
     # Create new tag
     new_tag = Tag(
         name=data['name'],
         color=data.get('color', '#cccccc')
     )
-    
+
     # Add to database
     if add_to_db(new_tag):
         return jsonify({
@@ -425,5 +425,5 @@ def create_tag():
                 "color": new_tag.color
             }
         }), 201
-    
+
     return jsonify({"msg": "Error creating tag"}), 500
